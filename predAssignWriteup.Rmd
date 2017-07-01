@@ -1,0 +1,100 @@
+---
+title: "Prediction Assignment Wrtieup"
+author: "Ishita Joshi"
+date: "July 1, 2017"
+output: html_document
+---
+
+## Summary
+
+The goal of this project is to create a machine-learning algorithm that can correctly identify 
+the quality of barbell bicep curls by using data from belt, forearm, arm, and dumbbell monitors. 
+There are five classifications of this exercise, one method is the correct form of the exercise 
+while the other four are common mistakes: exactly according to the specification (Class A), 
+throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), 
+lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+## Data Cleaning
+
+```{r}
+
+##Data loading
+setwd("~/Desktop/mydata/DS Coursera/Course -8 - Practical Machine Learning/coure project")
+pmlTrain<-read.csv("pml-training.csv", header=T, na.strings=c("NA", "#DIV/0!"))
+pmlTest<-read.csv("pml-testing.csv", header=T, na.string=c("NA", "#DIV/0!"))
+```
+
+```{r}
+## NA exclusion for all available variables
+noNApmlTrain<-pmlTrain[, apply(pmlTrain, 2, function(x) !any(is.na(x)))] 
+dim(noNApmlTrain)
+```
+
+```{r}
+cleanpmlTrain<-noNApmlTrain[,-c(1:8)]
+dim(cleanpmlTrain)
+```
+
+```{r}
+cleanpmltest<-pmlTest[,names(cleanpmlTrain[,-52])]
+dim(cleanpmltest)
+```
+
+## Data Partitioning and Prediction Process
+
+```{r}
+library(caret)
+inTrain<-createDataPartition(y=cleanpmlTrain$classe, p=0.75,list=F)
+training<-cleanpmlTrain[inTrain,] 
+test<-cleanpmlTrain[-inTrain,] 
+#Training and test set dimensions
+dim(training)
+```
+
+```{r}
+dim(test)
+```
+
+##Conclusion
+
+```{r}
+library(caret)
+set.seed(13333)
+fitControl2<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+rffit<-train(classe~.,data=training, method="rf", trControl=fitControl2, verbose=F)
+```
+
+```{r}
+predrf<-predict(rffit, newdata=test)
+confusionMatrix(predrf, test$classe)
+```
+
+```{r}
+pred20<-predict(rffit, newdata=cleanpmltest)
+pred20
+```
+
+```{r}
+fitControl2<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+gmbfit<-train(classe~.,data=training, method="gbm", trControl=fitControl2, verbose=F)
+gmbfit$finalModel
+class(gmbfit)
+predgmb<-predict(gmbfit, newdata=test)
+confusionMatrix(predgmb, test$classe)
+predtrain<-predict(gmbfit, newdata=training)
+confusionMatrix(predtrain, training$classe)
+predtrain<-predict(gmbfit, newdata=training)
+confusionMatrix(predtrain, training$classe)
+```
+
+```{r}
+getwd()
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(pred20)
+```
